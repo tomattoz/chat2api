@@ -24,6 +24,8 @@ async def format_not_stream_response(response, prompt_tokens, max_tokens, model)
     system_fingerprint = random.choice(system_fingerprint_list) if system_fingerprint_list else None
     created_time = int(time.time())
     all_text = ""
+    conversation_id = ""
+    message_id = ""
     async for chunk in response:
         try:
             if chunk.startswith("data: [DONE]"):
@@ -32,6 +34,10 @@ async def format_not_stream_response(response, prompt_tokens, max_tokens, model)
                 continue
             else:
                 chunk = json.loads(chunk[6:])
+                if chunk.get("conversation_id"):
+                    conversation_id = chunk["conversation_id"]
+                if chunk.get("message_id"):
+                    message_id = chunk["message_id"]
                 if not chunk["choices"][0].get("delta"):
                     continue
                 all_text += chunk["choices"][0]["delta"]["content"]
@@ -66,6 +72,10 @@ async def format_not_stream_response(response, prompt_tokens, max_tokens, model)
         ],
         "usage": usage
     }
+    if conversation_id:
+        data["conversation_id"] = conversation_id
+    if message_id:
+        data["message_id"] = message_id
     if system_fingerprint:
         data["system_fingerprint"] = system_fingerprint
     return data
