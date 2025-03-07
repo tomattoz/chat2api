@@ -1,0 +1,89 @@
+{
+    "taskDefinitionArn": "arn:aws:ecs:us-west-1:124355675408:task-definition/chat2api:1",
+    "containerDefinitions": [
+        {
+            "name": "chat2api",
+            "image": "chat2api",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "name": "5005",
+                    "containerPort": 80,
+                    "hostPort": 80,
+                    "protocol": "tcp",
+                    "appProtocol": "http"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "HISTORY_DISABLED",
+                    "value": "false"
+                }
+            ],
+            "environmentFiles": [],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "readonlyRootFilesystem": true,
+            "ulimits": [],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/chat2api",
+                    "mode": "non-blocking",
+                    "awslogs-create-group": "true",
+                    "max-buffer-size": "25m",
+                    "awslogs-region": "us-west-1",
+                    "awslogs-stream-prefix": "ecs"
+                },
+                "secretOptions": []
+            },
+            "systemControls": []
+        }
+    ],
+    "family": "chat2api",
+    "networkMode": "awsvpc",
+    "revision": 1,
+    "volumes": [],
+    "status": "ACTIVE",
+    "requiresAttributes": [
+        {
+            "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.17"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.28"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+        },
+        {
+            "name": "ecs.capability.task-eni"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
+        }
+    ],
+    "placementConstraints": [],
+    "compatibilities": [
+        "EC2"
+    ],
+    "requiresCompatibilities": [
+        "EC2"
+    ],
+    "cpu": "1024",
+    "memory": "3072",
+    "runtimePlatform": {
+        "cpuArchitecture": "X86_64",
+        "operatingSystemFamily": "LINUX"
+    },
+    "registeredAt": "2025-03-07T07:24:00.763Z",
+    "registeredBy": "arn:aws:iam::124355675408:root",
+    "enableFaultInjection": false,
+    "tags": []
+}
