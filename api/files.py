@@ -7,27 +7,32 @@ from utils.Client import Client
 from utils.configs import export_proxy_url, cf_file_url
 
 
-async def get_file_content(url):
+async def get_file_content(url, client=None, headers=None):
     if url.startswith("data:"):
         mime_type, base64_data = url.split(';')[0].split(':')[1], url.split(',')[1]
         file_content = pybase64.b64decode(base64_data)
         return file_content, mime_type
     else:
-        client = Client()
+        close_client = False
+        if client is None:
+            client = Client(proxy=export_proxy_url)
+            close_client = True
         try:
+            request_headers = headers.copy() if headers else {}
             if cf_file_url:
                 body = {"file_url": url}
-                r = await client.post(cf_file_url, timeout=60, json=body)
+                r = await client.post(cf_file_url, timeout=60, json=body, headers=request_headers)
             else:
-                r = await client.get(url, proxy=export_proxy_url, timeout=60)
+                r = await client.get(url, timeout=60, headers=request_headers)
             if r.status_code != 200:
                 return None, None
             file_content = r.content
             mime_type = r.headers.get('Content-Type', '').split(';')[0].strip()
             return file_content, mime_type
         finally:
-            await client.close()
-            del client
+            if close_client:
+                await client.close()
+                del client
 
 
 async def determine_file_use_case(mime_type):
