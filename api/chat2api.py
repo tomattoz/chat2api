@@ -1,8 +1,11 @@
 import asyncio
+import hashlib
+import os
 import types
+from urllib.parse import urlparse, unquote
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import Request, HTTPException, Form, Security
+from fastapi import Request, HTTPException, Form, Security, Response, Query
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from starlette.background import BackgroundTask
@@ -10,6 +13,7 @@ from starlette.background import BackgroundTask
 import utils.globals as globals
 from app import app, templates, security_scheme
 from chatgpt.ChatService import ChatService
+from api.files import get_file_content
 from chatgpt.authorization import refresh_all_tokens
 from utils.Logger import logger
 from utils.configs import api_prefix, scheduled_refresh
@@ -74,6 +78,49 @@ async def send_conversation(request: Request, credentials: HTTPAuthorizationCred
         await chat_service.close_client()
         logger.error(f"Server error, {str(e)}")
         raise HTTPException(status_code=500, detail="Server error")
+
+
+@app.get(f"/{api_prefix}/v1/files/download" if api_prefix else "/v1/files/download")
+async def download_file(
+    url: str = Query(..., description="Image URL returned from chat completions responses"),
+    credentials: HTTPAuthorizationCredentials = Security(security_scheme),
+):
+    req_token = credentials.credentials
+    token_hash = hashlib.sha256(req_token.encode()).hexdigest()[:8] if req_token else "anonymous"
+    logger.info(f"[Download] Start url={url} token={token_hash}")
+    chat_service = ChatService(req_token)
+    try:
+        await chat_service.set_dynamic_data(
+            {
+                "model": "gpt-4o-mini",
+                "messages": [],
+                "history_disabled": False,
+            }
+        )
+        file_content, mime_type = await get_file_content(
+            url, client=chat_service.s, headers=chat_service.base_headers
+        )
+        if not file_content:
+            logger.warning(f"[Download] Empty content url={url} token={token_hash}")
+            raise HTTPException(status_code=404, detail="File content not available")
+
+        parsed = urlparse(url)
+        filename = unquote(os.path.basename(parsed.path)) or "downloaded_file"
+        logger.info(
+            f"[Download] Success url={url} token={token_hash} mime={mime_type} bytes={len(file_content)} filename={filename}"
+        )
+        headers = {
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        }
+        return Response(content=file_content, media_type=mime_type or "application/octet-stream", headers=headers)
+    except HTTPException as e:
+        logger.warning(f"[Download] HTTP error url={url} token={token_hash} status={e.status_code} detail={e.detail}")
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except Exception as e:
+        logger.error(f"File download failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Server error")
+    finally:
+        await chat_service.close_client()
 
 
 @app.get(f"/{api_prefix}/tokens" if api_prefix else "/tokens", response_class=HTMLResponse)
