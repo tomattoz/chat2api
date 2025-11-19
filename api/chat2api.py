@@ -123,6 +123,37 @@ async def download_file(
         await chat_service.close_client()
 
 
+@app.get(f"/{api_prefix}/v1/files/download/headers" if api_prefix else "/v1/files/download/headers")
+async def download_file_headers(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
+    req_token = credentials.credentials
+    token_hash = hashlib.sha256(req_token.encode()).hexdigest()[:8] if req_token else "anonymous"
+    logger.info(f"[Download Headers] Request token={token_hash}")
+    chat_service = ChatService(req_token)
+    try:
+        await chat_service.set_dynamic_data(
+            {
+                "model": "gpt-4o-mini",
+                "messages": [],
+                "history_disabled": False,
+            }
+        )
+        headers = dict(chat_service.base_headers)
+        
+        result = {
+            "headers": headers,
+        }
+        logger.info(f"[Download Headers] Success token={token_hash} headers_count={len(headers)}")
+        return result
+    except HTTPException as e:
+        logger.warning(f"[Download Headers] HTTP error token={token_hash} status={e.status_code} detail={e.detail}")
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except Exception as e:
+        logger.error(f"[Download Headers] Failed token={token_hash}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Server error")
+    finally:
+        await chat_service.close_client()
+
+
 @app.get(f"/{api_prefix}/tokens" if api_prefix else "/tokens", response_class=HTMLResponse)
 async def upload_html(request: Request):
     tokens_count = len(set(globals.token_list) - set(globals.error_token_list))
